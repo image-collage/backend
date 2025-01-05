@@ -119,7 +119,19 @@ def upload_files():
     api_key = "12ba489d64c740258b7de4b634d1b9ff"  # Replace with your actual API key
     viewer_url, direct_url = upload_image_to_imgbb(image_paths[0], api_key)
 
-    return send_file(collage_image, mimetype='image/jpeg', as_attachment=True, download_name='collage.jpg')
+    # Save the collage image to a file to return as download
+    collage_image_path = os.path.join('uploads', 'collage.jpg')
+    collage_image.save(collage_image_path)
+
+    # Return the file for download and URLs in JSON
+    response = jsonify({
+        "viewer_url": viewer_url,
+        "direct_url": direct_url
+    })
+    response.headers['Content-Disposition'] = 'attachment; filename=collage.jpg'
+    response.set_data(open(collage_image_path, 'rb').read())
+
+    return response
 
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=5000)  # Make sure it listens on all network interfaces
