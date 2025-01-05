@@ -50,19 +50,24 @@ def create_collage(images, watermark_text="onlyfans4you.in"):
         collage.paste(img, pos)
 
     draw = ImageDraw.Draw(collage)
-    font_size = border_size * 4
+
+    # Independent font size
+    font_size = 50  # Set a fixed font size
     try:
         font = ImageFont.truetype("arial.ttf", font_size)
     except IOError:
         font = ImageFont.load_default()
 
+    # Calculate the text position
     text_bbox = draw.textbbox((0, 0), watermark_text, font=font)
     text_width = text_bbox[2] - text_bbox[0]
     text_height = text_bbox[3] - text_bbox[1]
     position = (final_size - text_width - border_size, final_size - text_height - border_size)
 
+    # Draw the watermark
     draw.text(position, watermark_text, fill=(0, 0, 0), font=font)
 
+    # Save collage to BytesIO
     img_io = io.BytesIO()
     collage.save(img_io, 'JPEG')
     img_io.seek(0)
