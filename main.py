@@ -1,21 +1,19 @@
 from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS  # Import CORS
-from PIL import Image
+from flask_cors import CORS  # Add CORS
+from PIL import Image, ImageDraw, ImageFont
 import io
 import os
 
 app = Flask(__name__)
 
-# Enable CORS for all routes
+# Enable CORS for all domains (you can restrict this later for security)
 CORS(app)
-
-# Or, to allow specific origins (for example, only your frontend URL)
-# CORS(app, resources={r"/create-collage/*": {"origins": "https://watermark-4wi3.onrender.com"}})
 
 # Ensure the "uploads" folder exists
 os.makedirs("uploads", exist_ok=True)
 
 def create_collage(images):
+    # Assuming you are processing images to create a 2x2 collage
     collage_width = 1280
     collage_height = 1280
     collage = Image.new('RGB', (collage_width, collage_height), (255, 255, 255))
@@ -33,11 +31,23 @@ def create_collage(images):
     collage.paste(images_resized[2], (0, 640))
     collage.paste(images_resized[3], (640, 640))
 
-    # Add watermark
-    watermark = Image.new('RGB', (collage_width, collage_height), (255, 255, 255))
-    watermark_img = Image.open("watermark.png")  # Use your watermark image here
-    watermark.paste(watermark_img, (collage_width - 160, collage_height - 80))
-    collage.paste(watermark, (0, 0), watermark)
+    # Add watermark text ("onlyfans4you.in") at the bottom-right corner
+    draw = ImageDraw.Draw(collage)
+    font = ImageFont.load_default()  # You can also use a custom font (e.g., truetype font)
+    
+    text = "onlyfans4you.in"
+    font_size = 50  # Set a visible font size
+    try:
+        font = ImageFont.truetype("arial.ttf", font_size)  # Use a specific font
+    except IOError:
+        font = ImageFont.load_default()  # Fallback to default font if arial is not available
+    
+    # Calculate text size and position
+    text_width, text_height = draw.textsize(text, font)
+    position = (collage_width - text_width - 10, collage_height - text_height - 10)  # 10px padding from the right and bottom
+
+    # Draw text on the image
+    draw.text(position, text, font=font, fill=(0, 0, 0))  # Black text color
 
     # Save the collage to a byte stream
     img_io = io.BytesIO()
@@ -67,4 +77,4 @@ def upload_files():
     return send_file(collage_image, mimetype='image/jpeg', as_attachment=True, download_name='collage.jpg')
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5000)  # Make sure it listens on all network interfaces
