@@ -1,15 +1,21 @@
 from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS  # Import CORS
 from PIL import Image
 import io
 import os
 
 app = Flask(__name__)
 
+# Enable CORS for all routes
+CORS(app)
+
+# Or, to allow specific origins (for example, only your frontend URL)
+# CORS(app, resources={r"/create-collage/*": {"origins": "https://watermark-4wi3.onrender.com"}})
+
 # Ensure the "uploads" folder exists
 os.makedirs("uploads", exist_ok=True)
 
 def create_collage(images):
-    # Assuming you are processing images to create a 2x2 collage
     collage_width = 1280
     collage_height = 1280
     collage = Image.new('RGB', (collage_width, collage_height), (255, 255, 255))
@@ -61,5 +67,4 @@ def upload_files():
     return send_file(collage_image, mimetype='image/jpeg', as_attachment=True, download_name='collage.jpg')
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # Default to 5000 if no port is specified
-    app.run(debug=True, host="0.0.0.0", port=port)
+    app.run(debug=True, host="0.0.0.0", port=5000)
