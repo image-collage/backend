@@ -50,7 +50,7 @@ def create_collage(images, watermark_text="onlyfans4you.in"):
         collage.paste(img, pos)
 
     draw = ImageDraw.Draw(collage)
-    font_size = border_size * 2
+    font_size = border_size * 4
     try:
         font = ImageFont.truetype("arial.ttf", font_size)
     except IOError:
