@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify, send_file
-from flask_cors import CORS  # Add CORS
+from flask_cors import CORS
 from PIL import Image, ImageDraw, ImageFont
 import io
 import os
+import requests
 
 app = Flask(__name__)
 
@@ -12,42 +13,80 @@ CORS(app)
 # Ensure the "uploads" folder exists
 os.makedirs("uploads", exist_ok=True)
 
-def create_collage(images):
-    # Assuming you are processing images to create a 2x2 collage
-    collage_width = 1280
-    collage_height = 1280
-    collage = Image.new('RGB', (collage_width, collage_height), (255, 255, 255))
+def upload_image_to_imgbb(image_path, api_key):
+    # Open the image to upload
+    with open(image_path, 'rb') as image_file:
+        image_data = image_file.read()
 
-    # Resize images and place them in the collage
-    images_resized = []
-    for image in images:
-        img = Image.open(image)
-        img = img.resize((640, 640))
-        images_resized.append(img)
+    # Define the URL for ImgBB API
+    url = "https://api.imgbb.com/1/upload"
 
-    # Paste images into the collage
-    collage.paste(images_resized[0], (0, 0))
-    collage.paste(images_resized[1], (640, 0))
-    collage.paste(images_resized[2], (0, 640))
-    collage.paste(images_resized[3], (640, 640))
+    # Prepare data for the request
+    payload = {
+        'key': api_key
+    }
+    files = {
+        'image': image_data
+    }
 
-    # Add watermark text ("onlyfans4you.in") at the bottom-right corner
+    # Make the request to upload the image
+    response = requests.post(url, data=payload, files=files)
+
+    # Check if the upload was successful
+    if response.status_code == 200:
+        response_data = response.json()
+        viewer_url = response_data['data']['url']  # Viewer URL
+        direct_url = response_data['data']['url_viewer']  # Direct URL
+        print(f"Image uploaded successfully!")
+        print(f"Viewer URL: {viewer_url}")
+        print(f"Direct URL: {direct_url}")
+        return viewer_url, direct_url
+    else:
+        print(f"Error uploading image: {response.status_code}")
+        return None, None
+
+def create_collage(images, watermark_text="onlyfans4you.in"):
+    # Define final image size and white border size
+    final_size = 1280
+    border_size = 20
+
+    # Calculate the size for each individual image with borders
+    single_image_size = (final_size - 3 * border_size) // 2
+
+    # Resize all images to the calculated size
+    resized_images = [img.resize((single_image_size, single_image_size), Image.Resampling.LANCZOS) for img in images]
+
+    # Create a blank white canvas for the collage
+    collage = Image.new('RGB', (final_size, final_size), color=(255, 255, 255))
+
+    # Calculate positions for each image
+    positions = [
+        (border_size, border_size),
+        (single_image_size + 2 * border_size, border_size),
+        (border_size, single_image_size + 2 * border_size),
+        (single_image_size + 2 * border_size, single_image_size + 2 * border_size)
+    ]
+
+    # Paste resized images with borders onto the collage
+    for img, pos in zip(resized_images, positions):
+        collage.paste(img, pos)
+
+    # Add watermark text at the bottom-right corner of the white border
     draw = ImageDraw.Draw(collage)
-    font = ImageFont.load_default()  # You can also use a custom font (e.g., truetype font)
-    
-    text = "onlyfans4you.in"
-    font_size = 50  # Set a visible font size
+    font_size = border_size * 2  # Make the font size proportional to the border size
     try:
-        font = ImageFont.truetype("arial.ttf", font_size)  # Use a specific font
+        font = ImageFont.truetype("arial.ttf", font_size)
     except IOError:
-        font = ImageFont.load_default()  # Fallback to default font if arial is not available
-    
-    # Calculate text size and position
-    text_width, text_height = draw.textsize(text, font)
-    position = (collage_width - text_width - 10, collage_height - text_height - 10)  # 10px padding from the right and bottom
+        font = ImageFont.load_default()
 
-    # Draw text on the image
-    draw.text(position, text, font=font, fill=(0, 0, 0))  # Black text color
+    # Calculate the position for the watermark
+    text_bbox = draw.textbbox((0, 0), watermark_text, font=font)
+    text_width = text_bbox[2] - text_bbox[0]
+    text_height = text_bbox[3] - text_bbox[1]
+    position = (final_size - text_width - border_size, final_size - text_height - border_size)
+
+    # Draw the watermark in bold and black
+    draw.text(position, watermark_text, fill=(0, 0, 0), font=font)
 
     # Save the collage to a byte stream
     img_io = io.BytesIO()
@@ -73,7 +112,13 @@ def upload_files():
         image_paths.append(file_path)
 
     # Create collage and return the image
-    collage_image = create_collage(image_paths)
+    images = [Image.open(path) for path in image_paths]
+    collage_image = create_collage(images)
+
+    # Upload collage to ImgBB
+    api_key = "12ba489d64c740258b7de4b634d1b9ff"  # Replace with your actual API key
+    viewer_url, direct_url = upload_image_to_imgbb(image_paths[0], api_key)
+
     return send_file(collage_image, mimetype='image/jpeg', as_attachment=True, download_name='collage.jpg')
 
 if __name__ == "__main__":
