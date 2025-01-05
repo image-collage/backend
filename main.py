@@ -11,10 +11,7 @@ CORS(app)
 # Ensure the "uploads" folder exists
 os.makedirs("uploads", exist_ok=True)
 
-def upload_image_to_imgbb(image_path, api_key):
-    with open(image_path, 'rb') as image_file:
-        image_data = image_file.read()
-
+def upload_image_to_imgbb(image_data, api_key):
     url = "https://api.imgbb.com/1/upload"
     payload = {
         'key': api_key
@@ -90,8 +87,9 @@ def upload_files():
     images = [Image.open(path) for path in image_paths]
     collage_image = create_collage(images)
 
+    # Upload the collage image to ImgBB
     api_key = "12ba489d64c740258b7de4b634d1b9ff"
-    viewer_url, direct_url = upload_image_to_imgbb(image_paths[0], api_key)
+    viewer_url, direct_url = upload_image_to_imgbb(collage_image, api_key)
 
     # Create the response with both URLs and the image blob
     return jsonify({
